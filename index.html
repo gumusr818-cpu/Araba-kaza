@@ -2,83 +2,162 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Araba Kaza Simülatörü</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D Mobil Araba Kaza Simülatörü</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
-        body {
-            background-color: #1a1a1a;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+        body, html {
+            width: 100%;
+            height: 100%;
             overflow: hidden;
+            background-color: #111;
+            font-family: Arial, sans-serif;
+            color: #fff;
         }
         #game-container {
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border-radius: 8px;
-            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         canvas {
             background-color: #2b2b2b;
             display: block;
         }
+        
+        /* UI Üst Bilgi */
         #ui {
             position: absolute;
-            top: 15px;
+            top: 10px;
             left: 15px;
             pointer-events: none;
             background: rgba(0, 0, 0, 0.6);
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
+            z-index: 10;
         }
-        #restart-btn {
+
+        /* Sağ Üst Buton Grubu */
+        .btn-group {
             position: absolute;
-            top: 15px;
+            top: 10px;
             right: 15px;
-            padding: 10px 20px;
-            font-size: 14px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .top-btn {
+            padding: 8px 14px;
+            font-size: 12px;
             font-weight: bold;
-            background-color: #ff5722;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            touch-action: manipulation;
         }
-        #restart-btn:hover {
-            background-color: #e64a19;
+        #fullscreen-btn { background-color: #2196F3; }
+        #restart-btn { background-color: #ff5722; }
+
+        /* Mobil Dokunmatik Kontroller */
+        .touch-controls {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
         }
-        #restart-btn:active {
-            transform: scale(0.95);
+        .control-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .touch-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-size: 22px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            touch-action: none;
+        }
+        .touch-btn:active {
+            background: rgba(255, 87, 34, 0.6);
+            border-color: #ff5722;
+        }
+
+        /* Dikey Ekran Uyarısı */
+        #portrait-warning {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #111;
+            z-index: 100;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+        @media (orientation: portrait) {
+            #portrait-warning { display: flex; }
         }
     </style>
 </head>
 <body>
 
+<div id="portrait-warning">
+    <h2>🔄 Lütfen Cihazınızı Yatay Çevirin</h2>
+    <p style="margin-top: 10px; color: #aaa;">En iyi oyun deneyimi için yatay ekran gereklidir.</p>
+</div>
+
 <div id="game-container">
-    <canvas id="gameCanvas" width="900" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
     
     <div id="ui">
         <div><strong>Hız:</strong> <span id="speedo">0</span> km/h</div>
         <div><strong>Hasar:</strong> %<span id="damage">0</span></div>
-        <div style="margin-top: 5px; font-size: 11px; opacity: 0.8;">
-            Kontroller: Yön Tuşları / WASD<br>
-            Yeniden Başlat: R Tuşu
-        </div>
     </div>
 
-    <button id="restart-btn" onclick="resetGame()">Baştan Başlat</button>
+    <div class="btn-group">
+        <button id="fullscreen-btn" class="top-btn" onclick="toggleFullscreen()">Tam Ekran</button>
+        <button id="restart-btn" class="top-btn" onclick="resetGame()">Baştan Başlat</button>
+    </div>
+
+    <!-- Mobil Dokunmatik Butonlar -->
+    <div class="touch-controls">
+        <div class="control-group">
+            <div class="touch-btn" id="btn-left">◀</div>
+            <div class="touch-btn" id="btn-right">▶</div>
+        </div>
+        <div class="control-group">
+            <div class="touch-btn" id="btn-down" style="background: rgba(244, 67, 54, 0.3);">▼</div>
+            <div class="touch-btn" id="btn-up" style="background: rgba(76, 175, 80, 0.3);">▲</div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -88,72 +167,75 @@ const ctx = canvas.getContext('2d');
 const speedoEl = document.getElementById('speedo');
 const damageEl = document.getElementById('damage');
 
-// Klavye Tuş Durumları
-const keys = {
-    Up: false,
-    Down: false,
-    Left: false,
-    Right: false
-};
+// Ekran boyutunu dinamik ayarlama
+let width, height;
+function resizeCanvas() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    setupWalls();
+}
 
-// Turuncu Duvar Sınırları
+let walls = [];
 const wallThickness = 20;
-const walls = [
-    { x: 0, y: 0, w: canvas.width, h: wallThickness }, // Üst
-    { x: 0, y: canvas.height - wallThickness, w: canvas.width, h: wallThickness }, // Alt
-    { x: 0, y: 0, w: wallThickness, h: canvas.height }, // Sol
-    { x: canvas.width - wallThickness, y: 0, w: wallThickness, h: canvas.height }, // Sağ
-    // İç Alandaki Engel Duvarlar
-    { x: 300, y: 200, w: 300, h: 30 },
-    { x: 150, y: 400, w: 30, h: 150 }
-];
+
+function setupWalls() {
+    walls = [
+        { x: 0, y: 0, w: width, h: wallThickness }, // Üst
+        { x: 0, y: height - wallThickness, w: width, h: wallThickness }, // Alt
+        { x: 0, y: 0, w: wallThickness, h: height }, // Sol
+        { x: width - wallThickness, y: 0, w: wallThickness, h: height }, // Sağ
+        // İç Engel Duvarlar
+        { x: width * 0.35, y: height * 0.3, w: width * 0.3, h: 25 },
+        { x: width * 0.2, y: height * 0.6, w: 25, h: height * 0.25 }
+    ];
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+// Kontrol Durumları
+const keys = { Up: false, Down: false, Left: false, Right: false };
 
 // Araba Sınıfı
 class Car {
-    constructor(x, y) {
-        this.startX = x;
-        this.startY = y;
+    constructor() {
         this.reset();
     }
 
     reset() {
-        this.x = this.startX;
-        this.y = this.startY;
-        this.width = 40;
-        this.height = 70;
-        this.angle = 0; // Radyan
+        this.x = width ? width / 2 : 300;
+        this.y = height ? height / 2 + 100 : 300;
+        this.width = 38;
+        this.height = 68;
+        this.angle = 0;
         this.speed = 0;
-        this.maxSpeed = 7;
+        this.maxSpeed = 7.5;
         this.reverseSpeed = -2.5;
-        this.acceleration = 0.15;
+        this.acceleration = 0.16;
         this.friction = 0.04;
-        this.turnSpeed = 0.04;
+        this.turnSpeed = 0.045;
         this.totalDamage = 0;
 
-        // Arabanın Hasar Görebilir Ağ Noktaları (Mesh Vertices)
-        // [x, y] oranları (-0.5 ile 0.5 arası)
         this.originalVertices = [
-            { x: -0.5, y: -0.5 }, // Sol Ön
-            { x: 0,    y: -0.52 },// Ön Burun
-            { x: 0.5,  y: -0.5 }, // Sağ Ön
-            { x: 0.5,  y: 0 },    // Sağ Sağ Kapı
-            { x: 0.5,  y: 0.5 },  // Sağ Arka
-            { x: -0.5, y: 0.5 },  // Sol Arka
-            { x: -0.5, y: 0 }     // Sol Kapı
+            { x: -0.5, y: -0.5 },
+            { x: 0,    y: -0.52 },
+            { x: 0.5,  y: -0.5 },
+            { x: 0.5,  y: 0 },
+            { x: 0.5,  y: 0.5 },
+            { x: -0.5, y: 0.5 },
+            { x: -0.5, y: 0 }
         ];
 
-        // Anlık bozulmuş noktalar
         this.vertices = JSON.parse(JSON.stringify(this.originalVertices));
     }
 
     update() {
-        // Hız Kontrolü
         if (keys.Up) {
             if (this.speed < this.maxSpeed) this.speed += this.acceleration;
         } else if (keys.Down) {
             if (this.speed > this.reverseSpeed) this.speed -= this.acceleration;
         } else {
-            // Sürtünme Yavaşlaması
             if (this.speed > 0) {
                 this.speed -= this.friction;
                 if (this.speed < 0) this.speed = 0;
@@ -163,29 +245,21 @@ class Car {
             }
         }
 
-        // Direksiyon Dönüşü (Yalnızca araç hareket ederken)
         if (Math.abs(this.speed) > 0.1) {
             const dir = this.speed >= 0 ? 1 : -1;
             if (keys.Left) this.angle -= this.turnSpeed * dir * (Math.abs(this.speed) / this.maxSpeed + 0.2);
             if (keys.Right) this.angle += this.turnSpeed * dir * (Math.abs(this.speed) / this.maxSpeed + 0.2);
         }
 
-        // Pozisyon Güncelleme
-        const nextX = this.x + Math.sin(this.angle) * this.speed;
-        const nextY = this.y - Math.cos(this.angle) * this.speed;
+        this.x += Math.sin(this.angle) * this.speed;
+        this.y -= Math.cos(this.angle) * this.speed;
 
-        this.x = nextX;
-        this.y = nextY;
-
-        // Çarpışma Kontrolü
         this.checkCollisions();
 
-        // UI Güncelleme
         speedoEl.innerText = Math.round(Math.abs(this.speed) * 15);
         damageEl.innerText = Math.min(100, Math.round(this.totalDamage));
     }
 
-    // Dünyadaki gerçek köşe koordinatlarını hesaplama
     getWorldVertices() {
         return this.vertices.map(v => {
             const vx = v.x * this.width;
@@ -198,8 +272,7 @@ class Car {
                 x: this.x + rx,
                 y: this.y + ry,
                 origX: v.x,
-                origY: v.y,
-                index: this.vertices.indexOf(v)
+                origY: v.y
             };
         });
     }
@@ -209,29 +282,28 @@ class Car {
 
         for (let wall of walls) {
             for (let v of worldVerts) {
-                // Nokta duvarın içinde mi?
                 if (v.x >= wall.x && v.x <= wall.x + wall.w &&
                     v.y >= wall.y && v.y <= wall.y + wall.h) {
                     
-                    this.handleCrash(v, wall);
+                    this.handleCrash(v);
                     break;
                 }
             }
         }
     }
 
-    handleCrash(hitVertex, wall) {
+    handleCrash(hitVertex) {
         const impactForce = Math.abs(this.speed);
         
-        // Yeterince yüksek bir hızla çarptıysa deforme et
         if (impactForce > 0.5) {
             this.totalDamage += impactForce * 4;
 
-            // Çarpışmanın merkez yönü
-            const crashAngle = this.angle;
-            
-            // Çarpan ve yakınındaki noktaları yamult
-            this.vertices.forEach((vert, idx) => {
+            // Titreşim efekti (Mobilde destekleniyorsa)
+            if (navigator.vibrate) {
+                navigator.vibrate(Math.min(200, impactForce * 30));
+            }
+
+            this.vertices.forEach(vert => {
                 const dist = Math.hypot(vert.x - hitVertex.origX, vert.y - hitVertex.origY);
                 if (dist < 0.6) {
                     const deformAmount = (impactForce * 0.04) / (dist + 0.5);
@@ -241,10 +313,7 @@ class Car {
             });
         }
 
-        // Çarpışma Tepkisi (Geri Sıçrama)
-        this.speed = -this.speed * 0.4;
-        
-        // Duvarın dışına itme
+        this.speed = -this.speed * 0.35;
         this.x -= Math.sin(this.angle) * (impactForce + 2);
         this.y += Math.cos(this.angle) * (impactForce + 2);
     }
@@ -254,72 +323,75 @@ class Car {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // 1. Gölge
+        // Gölge
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        const worldVerts = this.vertices;
-        ctx.moveTo(worldVerts[0].x * this.width + 5, worldVerts[0].y * this.height + 5);
-        for (let i = 1; i < worldVerts.length; i++) {
-            ctx.lineTo(worldVerts[i].x * this.width + 5, worldVerts[i].y * this.height + 5);
+        ctx.moveTo(this.vertices[0].x * this.width + 4, this.vertices[0].y * this.height + 4);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x * this.width + 4, this.vertices[i].y * this.height + 4);
         }
         ctx.closePath();
         ctx.fill();
 
-        // 2. Tekerlekler
+        // Tekerlekler
         ctx.fillStyle = '#111';
-        const wheelW = 6, wheelH = 12;
-        // Sol Ön / Sağ Ön / Sol Arka / Sağ Arka
+        const wheelW = 5, wheelH = 11;
         ctx.fillRect(-this.width/2 - 2, -this.height/3, wheelW, wheelH);
-        ctx.fillRect(this.width/2 - 4, -this.height/3, wheelW, wheelH);
+        ctx.fillRect(this.width/2 - 3, -this.height/3, wheelW, wheelH);
         ctx.fillRect(-this.width/2 - 2, this.height/3 - wheelH, wheelW, wheelH);
-        ctx.fillRect(this.width/2 - 4, this.height/3 - wheelH, wheelW, wheelH);
+        ctx.fillRect(this.width/2 - 3, this.height/3 - wheelH, wheelW, wheelH);
 
-        // 3. Araba Gövdesi (Yamulabilir Poligon)
-        ctx.fillStyle = '#d32f2f'; // Kırmızı Spor Araba
-        ctx.strokeStyle = '#8e0000';
+        // Gövde
+        ctx.fillStyle = '#e53935';
+        ctx.strokeStyle = '#b71c1c';
         ctx.lineWidth = 2;
 
         ctx.beginPath();
-        ctx.moveTo(worldVerts[0].x * this.width, worldVerts[0].y * this.height);
-        for (let i = 1; i < worldVerts.length; i++) {
-            ctx.lineTo(worldVerts[i].x * this.width, worldVerts[i].y * this.height);
+        ctx.moveTo(this.vertices[0].x * this.width, this.vertices[0].y * this.height);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x * this.width, this.vertices[i].y * this.height);
         }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // 4. Ön Cam ve Tavan Detayı
+        // Cam
         ctx.fillStyle = '#222';
-        ctx.fillRect(-this.width * 0.3, -this.height * 0.1, this.width * 0.6, this.height * 0.3);
-        
-        ctx.fillStyle = '#81d4fa'; // Cam yansıması
-        ctx.fillRect(-this.width * 0.25, -this.height * 0.08, this.width * 0.5, this.height * 0.1);
+        ctx.fillRect(-this.width * 0.3, -this.height * 0.1, this.width * 0.6, this.height * 0.28);
 
-        // 5. Far Işıkları (Ön)
+        // Farlar
         ctx.fillStyle = '#fff59d';
-        ctx.fillRect(-this.width * 0.4, -this.height * 0.48, 6, 4);
-        ctx.fillRect(this.width * 0.4 - 6, -this.height * 0.48, 6, 4);
+        ctx.fillRect(-this.width * 0.4, -this.height * 0.48, 5, 4);
+        ctx.fillRect(this.width * 0.4 - 5, -this.height * 0.48, 5, 4);
 
         ctx.restore();
     }
 }
 
-const car = new Car(450, 450);
+let car;
 
-// Duvarları Çizme
 function drawWalls() {
-    ctx.fillStyle = '#ff6600'; // Turuncu Renk
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = 'rgba(255, 102, 0, 0.5)';
-
+    ctx.fillStyle = '#ff6600'; // Turuncu
     for (let wall of walls) {
         ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
     }
-
-    ctx.shadowBlur = 0; // Diğer çizimleri etkilemesin
 }
 
-// Klavye Dinleyicileri
+// Dokunmatik Tuş Olayları
+function bindTouch(id, keyName) {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+    btn.addEventListener('mousedown', () => { keys[keyName] = true; });
+    btn.addEventListener('mouseup', () => { keys[keyName] = false; });
+}
+
+bindTouch('btn-up', 'Up');
+bindTouch('btn-down', 'Down');
+bindTouch('btn-left', 'Left');
+bindTouch('btn-right', 'Right');
+
+// Klavye Olayları
 window.addEventListener('keydown', e => {
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.Up = true;
     if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.Down = true;
@@ -335,16 +407,30 @@ window.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.Right = false;
 });
 
+// Tam Ekran Yapma Düğmesi Fonksiyonu
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            alert("Tam ekran modu başlatılamadı: " + err.message);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+
 function resetGame() {
     car.reset();
 }
 
-// Ana Oyun Döngüsü (Game Loop)
-function gameLoop() {
-    // Ekranı Temizle
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// Oyun Başlatma
+resizeCanvas();
+car = new Car();
 
-    // Çizimler ve Güncellemeler
+function gameLoop() {
+    ctx.clearRect(0, 0, width, height);
+
     drawWalls();
     car.update();
     car.draw();
@@ -352,10 +438,8 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Oyunu Başlat
 gameLoop();
 </script>
 
 </body>
-  </html>
-
+</html>
