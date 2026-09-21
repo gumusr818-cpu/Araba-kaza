@@ -11,7 +11,7 @@
             padding: 0;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation;
+            -webkit-touch-callout: none;
         }
         body, html {
             width: 100%;
@@ -25,13 +25,15 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
         canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-color: #2b2b2b;
-            display: block;
+            z-index: 1;
         }
         
         /* UI Üst Bilgi */
@@ -40,46 +42,49 @@
             top: 10px;
             left: 15px;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             padding: 8px 12px;
             border-radius: 6px;
             font-size: 13px;
-            z-index: 10;
+            z-index: 999;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
-        /* Sağ Üst Buton Grubu */
+        /* Üst Butonlar (Tam Ekran ve Yeniden Başlat) */
         .btn-group {
             position: absolute;
             top: 10px;
             right: 15px;
             display: flex;
             gap: 10px;
-            z-index: 10;
+            z-index: 999;
         }
         .top-btn {
-            padding: 8px 14px;
-            font-size: 12px;
+            padding: 10px 16px;
+            font-size: 13px;
             font-weight: bold;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             touch-action: manipulation;
         }
-        #fullscreen-btn { background-color: #2196F3; }
+        #fullscreen-btn { background-color: #007bff; }
         #restart-btn { background-color: #ff5722; }
 
-        /* Mobil Dokunmatik Kontroller */
-        .touch-controls {
+        /* Mobil Dokunmatik Kontroller (Ekranın Alt Kısmına Sabitlendi) */
+        .touch-layer {
             position: absolute;
-            bottom: 15px;
+            bottom: 0;
+            left: 0;
             width: 100%;
-            padding: 0 20px;
+            height: 140px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            padding: 0 25px;
+            z-index: 999;
             pointer-events: none;
         }
         .control-group {
@@ -88,22 +93,23 @@
             pointer-events: auto;
         }
         .touch-btn {
-            width: 65px;
-            height: 65px;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(0, 0, 0, 0.6);
+            border: 3px solid rgba(255, 255, 255, 0.6);
             color: white;
-            font-size: 22px;
+            font-size: 26px;
             display: flex;
             justify-content: center;
             align-items: center;
-            user-select: none;
             touch-action: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        .touch-btn:active {
-            background: rgba(255, 87, 34, 0.6);
-            border-color: #ff5722;
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(255, 87, 34, 0.8) !important;
+            border-color: #fff;
+            transform: scale(0.95);
         }
 
         /* Dikey Ekran Uyarısı */
@@ -115,7 +121,7 @@
             width: 100%;
             height: 100%;
             background: #111;
-            z-index: 100;
+            z-index: 9999;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -147,15 +153,17 @@
         <button id="restart-btn" class="top-btn" onclick="resetGame()">Baştan Başlat</button>
     </div>
 
-    <!-- Mobil Dokunmatik Butonlar -->
-    <div class="touch-controls">
+    <!-- Mobil Dokunmatik Buton Katmanı -->
+    <div class="touch-layer">
+        <!-- Sol Taraf: Direksiyon (Sağ - Sol) -->
         <div class="control-group">
             <div class="touch-btn" id="btn-left">◀</div>
             <div class="touch-btn" id="btn-right">▶</div>
         </div>
+        <!-- Sağ Taraf: Pedallar (Geri - Gaz) -->
         <div class="control-group">
-            <div class="touch-btn" id="btn-down" style="background: rgba(244, 67, 54, 0.3);">▼</div>
-            <div class="touch-btn" id="btn-up" style="background: rgba(76, 175, 80, 0.3);">▲</div>
+            <div class="touch-btn" id="btn-down" style="border-color: #ff5252;">▼</div>
+            <div class="touch-btn" id="btn-up" style="border-color: #4caf50;">▲</div>
         </div>
     </div>
 </div>
@@ -167,7 +175,6 @@ const ctx = canvas.getContext('2d');
 const speedoEl = document.getElementById('speedo');
 const damageEl = document.getElementById('damage');
 
-// Ekran boyutunu dinamik ayarlama
 let width, height;
 function resizeCanvas() {
     width = window.innerWidth;
@@ -182,22 +189,19 @@ const wallThickness = 20;
 
 function setupWalls() {
     walls = [
-        { x: 0, y: 0, w: width, h: wallThickness }, // Üst
-        { x: 0, y: height - wallThickness, w: width, h: wallThickness }, // Alt
-        { x: 0, y: 0, w: wallThickness, h: height }, // Sol
-        { x: width - wallThickness, y: 0, w: wallThickness, h: height }, // Sağ
-        // İç Engel Duvarlar
+        { x: 0, y: 0, w: width, h: wallThickness },
+        { x: 0, y: height - wallThickness, w: width, h: wallThickness },
+        { x: 0, y: 0, w: wallThickness, h: height },
+        { x: width - wallThickness, y: 0, w: wallThickness, h: height },
         { x: width * 0.35, y: height * 0.3, w: width * 0.3, h: 25 },
-        { x: width * 0.2, y: height * 0.6, w: 25, h: height * 0.25 }
+        { x: width * 0.2, y: height * 0.55, w: 25, h: height * 0.25 }
     ];
 }
 
 window.addEventListener('resize', resizeCanvas);
 
-// Kontrol Durumları
 const keys = { Up: false, Down: false, Left: false, Right: false };
 
-// Araba Sınıfı
 class Car {
     constructor() {
         this.reset();
@@ -205,7 +209,7 @@ class Car {
 
     reset() {
         this.x = width ? width / 2 : 300;
-        this.y = height ? height / 2 + 100 : 300;
+        this.y = height ? height / 2 + 50 : 300;
         this.width = 38;
         this.height = 68;
         this.angle = 0;
@@ -298,7 +302,6 @@ class Car {
         if (impactForce > 0.5) {
             this.totalDamage += impactForce * 4;
 
-            // Titreşim efekti (Mobilde destekleniyorsa)
             if (navigator.vibrate) {
                 navigator.vibrate(Math.min(200, impactForce * 30));
             }
@@ -371,27 +374,43 @@ class Car {
 let car;
 
 function drawWalls() {
-    ctx.fillStyle = '#ff6600'; // Turuncu
+    ctx.fillStyle = '#ff6600';
     for (let wall of walls) {
         ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
     }
 }
 
-// Dokunmatik Tuş Olayları
-function bindTouch(id, keyName) {
+// Dokunmatik Tuş Yönetimi (Hem Touch hem Mouse destekli)
+function setupTouchButton(id, keyName) {
     const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
-    btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
-    btn.addEventListener('mousedown', () => { keys[keyName] = true; });
-    btn.addEventListener('mouseup', () => { keys[keyName] = false; });
+
+    const start = (e) => {
+        if (e.cancelable) e.preventDefault();
+        keys[keyName] = true;
+        btn.classList.add('active');
+    };
+
+    const end = (e) => {
+        if (e.cancelable) e.preventDefault();
+        keys[keyName] = false;
+        btn.classList.remove('active');
+    };
+
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', end, { passive: false });
+    btn.addEventListener('touchcancel', end, { passive: false });
+
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
 }
 
-bindTouch('btn-up', 'Up');
-bindTouch('btn-down', 'Down');
-bindTouch('btn-left', 'Left');
-bindTouch('btn-right', 'Right');
+setupTouchButton('btn-up', 'Up');
+setupTouchButton('btn-down', 'Down');
+setupTouchButton('btn-left', 'Left');
+setupTouchButton('btn-right', 'Right');
 
-// Klavye Olayları
+// Klavye Desteği
 window.addEventListener('keydown', e => {
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.Up = true;
     if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.Down = true;
@@ -407,16 +426,18 @@ window.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.Right = false;
 });
 
-// Tam Ekran Yapma Düğmesi Fonksiyonu
+// Tam Ekran Düğmesi
 function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            alert("Tam ekran modu başlatılamadı: " + err.message);
-        });
+    const doc = window.document;
+    const docEl = doc.documentElement;
+
+    const requestFullscreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    const exitFullscreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+    if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+        if (requestFullscreen) requestFullscreen.call(docEl);
     } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
+        if (exitFullscreen) exitFullscreen.call(doc);
     }
 }
 
@@ -424,7 +445,6 @@ function resetGame() {
     car.reset();
 }
 
-// Oyun Başlatma
 resizeCanvas();
 car = new Car();
 
