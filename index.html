@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2D Mobil Araba Kaza Simülatörü</title>
+    <title>2D Gerçekçi Kaza Simülatörü</title>
     <style>
         * {
             box-sizing: border-box;
@@ -11,14 +11,13 @@
             padding: 0;
             user-select: none;
             -webkit-user-select: none;
-            -webkit-touch-callout: none;
         }
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #111;
-            font-family: Arial, sans-serif;
+            background-color: #050505;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #fff;
         }
         #game-container {
@@ -32,54 +31,50 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #2b2b2b;
+            background-color: #1e1e24;
             z-index: 1;
         }
-        
-        /* UI Üst Bilgi */
         #ui {
             position: absolute;
-            top: 10px;
+            top: 15px;
             left: 15px;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
             z-index: 999;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
         }
-
-        /* Üst Butonlar (Tam Ekran ve Yeniden Başlat) */
         .btn-group {
             position: absolute;
-            top: 10px;
+            top: 15px;
             right: 15px;
             display: flex;
             gap: 10px;
             z-index: 999;
         }
         .top-btn {
-            padding: 10px 16px;
+            padding: 10px 18px;
             font-size: 13px;
             font-weight: bold;
             color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             touch-action: manipulation;
         }
-        #fullscreen-btn { background-color: #007bff; }
-        #restart-btn { background-color: #ff5722; }
+        #fullscreen-btn { background-color: #0288d1; }
+        #restart-btn { background-color: #d32f2f; }
 
-        /* Mobil Dokunmatik Kontroller (Ekranın Alt Kısmına Sabitlendi) */
         .touch-layer {
             position: absolute;
-            bottom: 0;
+            bottom: 10px;
             left: 0;
             width: 100%;
-            height: 140px;
+            height: 150px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -93,40 +88,31 @@
             pointer-events: auto;
         }
         .touch-btn {
-            width: 70px;
-            height: 70px;
+            width: 75px;
+            height: 75px;
             border-radius: 50%;
-            background: rgba(0, 0, 0, 0.6);
-            border: 3px solid rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.65);
+            border: 3px solid rgba(255, 255, 255, 0.4);
             color: white;
-            font-size: 26px;
+            font-size: 28px;
             display: flex;
             justify-content: center;
             align-items: center;
             touch-action: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
         }
         .touch-btn:active, .touch-btn.active {
-            background: rgba(255, 87, 34, 0.8) !important;
+            background: rgba(211, 47, 47, 0.85) !important;
             border-color: #fff;
-            transform: scale(0.95);
+            transform: scale(0.92);
         }
 
-        /* Dikey Ekran Uyarısı */
         #portrait-warning {
             display: none;
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #111;
-            z-index: 9999;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 20px;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; z-index: 9999;
+            flex-direction: column; justify-content: center; align-items: center; text-align: center;
         }
         @media (orientation: portrait) {
             #portrait-warning { display: flex; }
@@ -137,7 +123,7 @@
 
 <div id="portrait-warning">
     <h2>🔄 Lütfen Cihazınızı Yatay Çevirin</h2>
-    <p style="margin-top: 10px; color: #aaa;">En iyi oyun deneyimi için yatay ekran gereklidir.</p>
+    <p style="margin-top: 10px; color: #888;">Gerçekçi kaza deneyimi için yatay ekran gereklidir.</p>
 </div>
 
 <div id="game-container">
@@ -145,7 +131,7 @@
     
     <div id="ui">
         <div><strong>Hız:</strong> <span id="speedo">0</span> km/h</div>
-        <div><strong>Hasar:</strong> %<span id="damage">0</span></div>
+        <div><strong>Gövde Hasarı:</strong> %<span id="damage">0</span></div>
     </div>
 
     <div class="btn-group">
@@ -153,17 +139,14 @@
         <button id="restart-btn" class="top-btn" onclick="resetGame()">Baştan Başlat</button>
     </div>
 
-    <!-- Mobil Dokunmatik Buton Katmanı -->
     <div class="touch-layer">
-        <!-- Sol Taraf: Direksiyon (Sağ - Sol) -->
         <div class="control-group">
             <div class="touch-btn" id="btn-left">◀</div>
             <div class="touch-btn" id="btn-right">▶</div>
         </div>
-        <!-- Sağ Taraf: Pedallar (Geri - Gaz) -->
         <div class="control-group">
-            <div class="touch-btn" id="btn-down" style="border-color: #ff5252;">▼</div>
-            <div class="touch-btn" id="btn-up" style="border-color: #4caf50;">▲</div>
+            <div class="touch-btn" id="btn-down" style="border-color: #ef5350;">▼</div>
+            <div class="touch-btn" id="btn-up" style="border-color: #66bb6a;">▲</div>
         </div>
     </div>
 </div>
@@ -176,6 +159,9 @@ const speedoEl = document.getElementById('speedo');
 const damageEl = document.getElementById('damage');
 
 let width, height;
+let shakeAmount = 0;
+let particles = [];
+
 function resizeCanvas() {
     width = window.innerWidth;
     height = window.innerHeight;
@@ -185,7 +171,7 @@ function resizeCanvas() {
 }
 
 let walls = [];
-const wallThickness = 20;
+const wallThickness = 24;
 
 function setupWalls() {
     walls = [
@@ -193,15 +179,52 @@ function setupWalls() {
         { x: 0, y: height - wallThickness, w: width, h: wallThickness },
         { x: 0, y: 0, w: wallThickness, h: height },
         { x: width - wallThickness, y: 0, w: wallThickness, h: height },
-        { x: width * 0.35, y: height * 0.3, w: width * 0.3, h: 25 },
-        { x: width * 0.2, y: height * 0.55, w: 25, h: height * 0.25 }
+        // Engel Blokları
+        { x: width * 0.4, y: height * 0.25, w: width * 0.2, h: 40 },
+        { x: width * 0.25, y: height * 0.6, w: 40, h: height * 0.25 },
+        { x: width * 0.7, y: height * 0.5, w: 40, h: height * 0.3 }
     ];
 }
 
 window.addEventListener('resize', resizeCanvas);
-
 const keys = { Up: false, Down: false, Left: false, Right: false };
 
+// Parça ve Kıvılcım Efekt Sistemi
+class Particle {
+    constructor(x, y, vx, vy, color, size, life, isSpark = false) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.size = size;
+        this.maxLife = life;
+        this.life = life;
+        this.isSpark = isSpark;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.95;
+        this.vy *= 0.95;
+        this.life--;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.life / this.maxLife;
+        ctx.fillStyle = this.color;
+        if (this.isSpark) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ffaa00';
+        }
+        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+        ctx.restore();
+    }
+}
+
+// Gelişmiş Araba Sınıfı (Soft-Body Yamulma Fizikli)
 class Car {
     constructor() {
         this.reset();
@@ -209,29 +232,38 @@ class Car {
 
     reset() {
         this.x = width ? width / 2 : 300;
-        this.y = height ? height / 2 + 50 : 300;
-        this.width = 38;
-        this.height = 68;
+        this.y = height ? height / 2 + 100 : 300;
+        this.width = 42;
+        this.height = 76;
         this.angle = 0;
         this.speed = 0;
-        this.maxSpeed = 7.5;
-        this.reverseSpeed = -2.5;
-        this.acceleration = 0.16;
-        this.friction = 0.04;
-        this.turnSpeed = 0.045;
+        this.maxSpeed = 8.5;
+        this.reverseSpeed = -3;
+        this.acceleration = 0.18;
+        this.friction = 0.035;
+        this.turnSpeed = 0.048;
         this.totalDamage = 0;
 
-        this.originalVertices = [
-            { x: -0.5, y: -0.5 },
-            { x: 0,    y: -0.52 },
-            { x: 0.5,  y: -0.5 },
-            { x: 0.5,  y: 0 },
-            { x: 0.5,  y: 0.5 },
-            { x: -0.5, y: 0.5 },
-            { x: -0.5, y: 0 }
-        ];
+        // 32 Noktalı Yüksek Detaylı Gövde Mesh'i
+        this.mesh = [];
+        const resolution = 32;
+        for (let i = 0; i < resolution; i++) {
+            const rad = (i / resolution) * Math.PI * 2;
+            // Dikdörtgen formu elipse benzetip ölçekleme
+            let rx = Math.cos(rad) * (this.width / 2);
+            let ry = Math.sin(rad) * (this.height / 2);
 
-        this.vertices = JSON.parse(JSON.stringify(this.originalVertices));
+            // Köşeleri dikdörtgene benzetme
+            rx = Math.sign(rx) * Math.min(Math.abs(rx), this.width / 2);
+            ry = Math.sign(ry) * Math.min(Math.abs(ry), this.height / 2);
+
+            this.mesh.push({
+                ox: rx, // Orijinal Offset X
+                oy: ry, // Orijinal Offset Y
+                x: rx,  // Yamulan Offset X
+                y: ry   // Yamulan Offset Y
+            });
+        }
     }
 
     update() {
@@ -260,65 +292,97 @@ class Car {
 
         this.checkCollisions();
 
-        speedoEl.innerText = Math.round(Math.abs(this.speed) * 15);
+        speedoEl.innerText = Math.round(Math.abs(this.speed) * 16);
         damageEl.innerText = Math.min(100, Math.round(this.totalDamage));
     }
 
-    getWorldVertices() {
-        return this.vertices.map(v => {
-            const vx = v.x * this.width;
-            const vy = v.y * this.height;
-
-            const rx = vx * Math.cos(this.angle) - vy * Math.sin(this.angle);
-            const ry = vx * Math.sin(this.angle) + vy * Math.cos(this.angle);
+    // Ekrandaki Dünya Koordinatlarına Dönüştürme
+    getWorldMesh() {
+        return this.mesh.map(m => {
+            const rx = m.x * Math.cos(this.angle) - m.y * Math.sin(this.angle);
+            const ry = m.x * Math.sin(this.angle) + m.y * Math.cos(this.angle);
 
             return {
                 x: this.x + rx,
                 y: this.y + ry,
-                origX: v.x,
-                origY: v.y
+                node: m
             };
         });
     }
 
     checkCollisions() {
-        const worldVerts = this.getWorldVertices();
+        const worldNodes = this.getWorldMesh();
 
         for (let wall of walls) {
-            for (let v of worldVerts) {
-                if (v.x >= wall.x && v.x <= wall.x + wall.w &&
-                    v.y >= wall.y && v.y <= wall.y + wall.h) {
+            for (let vn of worldNodes) {
+                if (vn.x >= wall.x && vn.x <= wall.x + wall.w &&
+                    vn.y >= wall.y && vn.y <= wall.y + wall.h) {
                     
-                    this.handleCrash(v);
+                    this.handleCrash(vn, wall);
                     break;
                 }
             }
         }
     }
 
-    handleCrash(hitVertex) {
-        const impactForce = Math.abs(this.speed);
-        
-        if (impactForce > 0.5) {
-            this.totalDamage += impactForce * 4;
+    handleCrash(hitNode, wall) {
+        const impact = Math.abs(this.speed);
+
+        if (impact > 0.4) {
+            this.totalDamage += impact * 3.5;
+            shakeAmount = Math.min(25, impact * 3);
 
             if (navigator.vibrate) {
-                navigator.vibrate(Math.min(200, impactForce * 30));
+                navigator.vibrate(Math.min(250, impact * 40));
             }
 
-            this.vertices.forEach(vert => {
-                const dist = Math.hypot(vert.x - hitVertex.origX, vert.y - hitVertex.origY);
-                if (dist < 0.6) {
-                    const deformAmount = (impactForce * 0.04) / (dist + 0.5);
-                    vert.x += (Math.random() - 0.5) * deformAmount;
-                    vert.y += (Math.random() - 0.5) * deformAmount;
+            // Gelişmiş Gerçekçi Yamulma Algoritması (Darbe Yayılımı)
+            const nodeOffset = hitNode.node;
+            
+            // Çarpan noktaya göre içeri ezilme vektörü
+            const indentX = -nodeOffset.x * (impact * 0.08);
+            const indentY = -nodeOffset.y * (impact * 0.08);
+
+            this.mesh.forEach(m => {
+                const dist = Math.hypot(m.ox - nodeOffset.ox, m.oy - nodeOffset.oy);
+                if (dist < 28) {
+                    const factor = (28 - dist) / 28;
+                    // Tıpkı sac metal gibi içe göçme
+                    m.x += (indentX + (Math.random() - 0.5) * impact * 2) * factor;
+                    m.y += (indentY + (Math.random() - 0.5) * impact * 2) * factor;
                 }
             });
+
+            // Parça / Kıvılcım Saçma
+            const sparkCount = Math.floor(impact * 6);
+            for (let i = 0; i < sparkCount; i++) {
+                const pAngle = Math.random() * Math.PI * 2;
+                const pSpeed = Math.random() * impact * 2 + 1;
+                particles.push(new Particle(
+                    hitNode.x, hitNode.y,
+                    Math.cos(pAngle) * pSpeed, Math.sin(pAngle) * pSpeed,
+                    '#ffcc00', Math.random() * 3 + 1, 20 + Math.random() * 20, true
+                ));
+            }
+
+            // Kopan Araba Boyası / Enkaz Parçaları
+            if (impact > 2) {
+                for (let i = 0; i < Math.floor(impact * 2); i++) {
+                    const pAngle = Math.random() * Math.PI * 2;
+                    const pSpeed = Math.random() * impact * 1.5;
+                    particles.push(new Particle(
+                        hitNode.x, hitNode.y,
+                        Math.cos(pAngle) * pSpeed, Math.sin(pAngle) * pSpeed,
+                        '#c62828', Math.random() * 4 + 2, 40 + Math.random() * 30
+                    ));
+                }
+            }
         }
 
-        this.speed = -this.speed * 0.35;
-        this.x -= Math.sin(this.angle) * (impactForce + 2);
-        this.y += Math.cos(this.angle) * (impactForce + 2);
+        // Çarpışma Tepkisi (Geri Tepme)
+        this.speed = -this.speed * 0.3;
+        this.x -= Math.sin(this.angle) * (impact + 2);
+        this.y += Math.cos(this.angle) * (impact + 2);
     }
 
     draw() {
@@ -326,46 +390,66 @@ class Car {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Gölge
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        // 1. Far Işıkları
+        if (this.totalDamage < 85) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 245, 157, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(-12, -35);
+            ctx.lineTo(-30, -120);
+            ctx.lineTo(0, -120);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(12, -35);
+            ctx.lineTo(30, -120);
+            ctx.lineTo(0, -120);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 2. Gölge
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
-        ctx.moveTo(this.vertices[0].x * this.width + 4, this.vertices[0].y * this.height + 4);
-        for (let i = 1; i < this.vertices.length; i++) {
-            ctx.lineTo(this.vertices[i].x * this.width + 4, this.vertices[i].y * this.height + 4);
+        ctx.moveTo(this.mesh[0].x + 5, this.mesh[0].y + 5);
+        for (let i = 1; i < this.mesh.length; i++) {
+            ctx.lineTo(this.mesh[i].x + 5, this.mesh[i].y + 5);
         }
         ctx.closePath();
         ctx.fill();
 
-        // Tekerlekler
+        // 3. Tekerlekler
         ctx.fillStyle = '#111';
-        const wheelW = 5, wheelH = 11;
-        ctx.fillRect(-this.width/2 - 2, -this.height/3, wheelW, wheelH);
-        ctx.fillRect(this.width/2 - 3, -this.height/3, wheelW, wheelH);
-        ctx.fillRect(-this.width/2 - 2, this.height/3 - wheelH, wheelW, wheelH);
-        ctx.fillRect(this.width/2 - 3, this.height/3 - wheelH, wheelW, wheelH);
+        const wW = 6, wH = 13;
+        ctx.fillRect(-this.width/2 - 2, -this.height/3, wW, wH);
+        ctx.fillRect(this.width/2 - 4, -this.height/3, wW, wH);
+        ctx.fillRect(-this.width/2 - 2, this.height/3 - wH, wW, wH);
+        ctx.fillRect(this.width/2 - 4, this.height/3 - wH, wW, wH);
 
-        // Gövde
-        ctx.fillStyle = '#e53935';
-        ctx.strokeStyle = '#b71c1c';
-        ctx.lineWidth = 2;
+        // 4. Yamulan Kırmızı Gövde (Soft-Body Mesh Çizimi)
+        ctx.fillStyle = '#d32f2f';
+        ctx.strokeStyle = '#8e0000';
+        ctx.lineWidth = 2.5;
 
         ctx.beginPath();
-        ctx.moveTo(this.vertices[0].x * this.width, this.vertices[0].y * this.height);
-        for (let i = 1; i < this.vertices.length; i++) {
-            ctx.lineTo(this.vertices[i].x * this.width, this.vertices[i].y * this.height);
+        ctx.moveTo(this.mesh[0].x, this.mesh[0].y);
+        for (let i = 1; i < this.mesh.length; i++) {
+            ctx.lineTo(this.mesh[i].x, this.mesh[i].y);
         }
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Cam
-        ctx.fillStyle = '#222';
-        ctx.fillRect(-this.width * 0.3, -this.height * 0.1, this.width * 0.6, this.height * 0.28);
-
-        // Farlar
-        ctx.fillStyle = '#fff59d';
-        ctx.fillRect(-this.width * 0.4, -this.height * 0.48, 5, 4);
-        ctx.fillRect(this.width * 0.4 - 5, -this.height * 0.48, 5, 4);
+        // 5. Tavan ve Ön Cam
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-this.width * 0.28, -this.height * 0.1, this.width * 0.56, this.height * 0.25);
+        
+        ctx.fillStyle = '#4fc3f7';
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(-this.width * 0.24, -this.height * 0.08, this.width * 0.48, this.height * 0.08);
+        ctx.globalAlpha = 1.0;
 
         ctx.restore();
     }
@@ -375,12 +459,15 @@ let car;
 
 function drawWalls() {
     ctx.fillStyle = '#ff6600';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = 'rgba(255, 102, 0, 0.4)';
+
     for (let wall of walls) {
         ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
     }
+    ctx.shadowBlur = 0;
 }
 
-// Dokunmatik Tuş Yönetimi (Hem Touch hem Mouse destekli)
 function setupTouchButton(id, keyName) {
     const btn = document.getElementById(id);
 
@@ -410,7 +497,6 @@ setupTouchButton('btn-down', 'Down');
 setupTouchButton('btn-left', 'Left');
 setupTouchButton('btn-right', 'Right');
 
-// Klavye Desteği
 window.addEventListener('keydown', e => {
     if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.Up = true;
     if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.Down = true;
@@ -426,7 +512,6 @@ window.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.Right = false;
 });
 
-// Tam Ekran Düğmesi
 function toggleFullscreen() {
     const doc = window.document;
     const docEl = doc.documentElement;
@@ -442,19 +527,43 @@ function toggleFullscreen() {
 }
 
 function resetGame() {
+    particles = [];
     car.reset();
 }
 
 resizeCanvas();
 car = new Car();
 
+// Oyun Döngüsü
 function gameLoop() {
+    ctx.save();
+
+    // Çarpışma Ekran Sallantısı
+    if (shakeAmount > 0) {
+        const sx = (Math.random() - 0.5) * shakeAmount;
+        const sy = (Math.random() - 0.5) * shakeAmount;
+        ctx.translate(sx, sy);
+        shakeAmount *= 0.88;
+        if (shakeAmount < 0.5) shakeAmount = 0;
+    }
+
     ctx.clearRect(0, 0, width, height);
 
     drawWalls();
+
+    // Parça Güncellemeleri
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
     car.update();
     car.draw();
 
+    ctx.restore();
     requestAnimationFrame(gameLoop);
 }
 
